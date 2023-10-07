@@ -14,46 +14,80 @@ namespace storehouse_backend.Controllers
         {
             this.productService = _productService;
         }
-        [HttpGet]
-        public async Task<List<Product>> Get() => await productService.GetAsync();
-        [HttpGet("{id:length(24)}")]
-        public async Task<ActionResult<Product>> Get(string Id)
-        {
-            var product = await productService.GetAsync(Id);
-            if (product is null)
+        [HttpGet("list")]
+        public async Task<ActionResult<Product[]>> Get() {
+            try
             {
-                return NotFound();
+                var products = await productService.GetAsync();
+                return StatusCode(200, products);
             }
-            return product;
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return StatusCode(500, new ResponseObject(false, "Internal Server Error", e));
+            }
         }
-        [HttpPost]
+        [HttpGet("{id:length(24)}")]
+        public async Task<ActionResult<Product>> GetById(string Id)
+        {
+            try
+            {
+                var product = await productService.GetAsync(Id);
+                if (product is null)
+                {
+                    return StatusCode(404, new ResponseObject(false, "Id not found"));
+                }
+                return StatusCode(200, product);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return StatusCode(500, new ResponseObject(false, "Internal Server Error", e));
+            }
+        }
+        [HttpPost("create")]
         public async Task<IActionResult> Post(Product product)
         {
-            await productService.CreateAsync(product);
-            return NoContent();
+            try
+            {
+                await productService.CreateAsync(product);
+                return StatusCode(201, new ResponseObject(true, "Inserted")) ;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return StatusCode(500, new ResponseObject(false, "Internal Server Error", e));
+            }
         }
-        [HttpPut("{Id:length(24)}")]
+        [HttpPut("update/{Id:length(24)}")]
         public async Task<IActionResult> Update(string Id, Product uProduct)
         {
-            var product = await productService.GetAsync(Id);
-            if (product is null)
+            try
             {
-                return NotFound();
+                var product = await productService.GetAsync(Id);
+                if (product is null)
+                {
+                    return StatusCode(404, new ResponseObject(false, "Id not found"));
+                }
+                uProduct.Id = product.Id;
+                await productService.UpdateAsync(Id, uProduct);
+                return StatusCode(205, new ResponseObject(true, "Updated"));
             }
-            uProduct.Id = product.Id;
-            await productService.UpdateAsync(Id, uProduct);
-            return NoContent();
+            catch (Exception e)
+            {
+                return StatusCode(500, new ResponseObject(false, "Internal Server Error", e));
+            }
         }
-        [HttpDelete("{Id:length(24)}")]
+        [HttpDelete("delete/{Id:length(24)}")]
         public async Task<IActionResult> Delete(string Id)
         {
             var product = await productService.GetAsync(Id);
             if (product is null)
             {
-                return NotFound();
+                return StatusCode(204, new ResponseObject(true, "Already deleted or Id not found"));
             }
             await productService.RemoveAsync(Id);
-            return NoContent();
+            return StatusCode(200, new ResponseObject(true, "Deleted"));
         }
     }
 }
